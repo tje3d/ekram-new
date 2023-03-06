@@ -1,0 +1,299 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Gate {
+  id       Int      @id @default(autoincrement()) @db.UnsignedInt
+  name     String   @unique
+  location String
+  gender   Gender
+  type     GateType
+
+  Taradod        Taradod[]
+  TaradodTotal   TaradodTotal[]
+  TaradodNote    TaradodNote[]
+  Error          Error[]
+  UserHasGate    UserHasGate[]
+  UserWatchGates UserWatchGates[]
+
+  @@index([location])
+}
+
+enum Gender {
+  MALE   @map(name: "آقا")
+  FEMALE @map(name: "خانم")
+}
+
+enum GateType {
+  ZAER        @map(name: "زائر")
+  TAHVILGHAZA @map(name: "تحویل غذا")
+  AVAMEL      @map(name: "عوامل اجرائی")
+}
+
+model User {
+  id           Int     @id @default(autoincrement()) @db.UnsignedInt
+  name         String
+  username     String  @unique
+  password     String
+  logoutBefore String?
+  lastSeen     String?
+
+  UserLogins         UserLogins[]
+  UserHasPermissions UserHasPermissions[]
+  UserHasRole        UserHasRole?
+  ErrorsChecked      Error[]
+  UserHasBakhsh      UserHasBakhsh[]
+  UserWatchGates     UserWatchGates[]
+  UserHasGate        UserHasGate?
+  TaradodNote        TaradodNote[]
+}
+
+model UserHasGate {
+  userId Int @unique @db.UnsignedInt
+  gateId Int @unique @db.UnsignedInt
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Gate Gate @relation(fields: [gateId], references: [id], onDelete: Cascade)
+}
+
+model UserWatchGates {
+  userId Int @db.UnsignedInt
+  gateId Int @db.UnsignedInt
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Gate Gate @relation(fields: [gateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gateId])
+}
+
+model UserHasBakhsh {
+  userId   Int @db.UnsignedInt
+  bakhshId Int @unique @db.UnsignedInt
+
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Bakhsh Bakhsh @relation(fields: [bakhshId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bakhshId])
+}
+
+model Option {
+  id    Int    @id @default(autoincrement()) @db.UnsignedInt
+  key   String
+  value String @db.Text
+
+  @@index(key)
+}
+
+model Permission {
+  id   Int    @id @default(autoincrement()) @db.UnsignedInt
+  name String
+
+  UserHasPermissions UserHasPermissions[]
+}
+
+model Role {
+  id          Int           @id @default(autoincrement()) @db.UnsignedInt
+  name        String
+  UserHasRole UserHasRole[]
+}
+
+model UserHasPermissions {
+  permissionId Int @db.UnsignedInt
+  userId       Int @db.UnsignedInt
+
+  Permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  User       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([permissionId, userId])
+}
+
+model UserHasRole {
+  userId Int @unique @db.UnsignedInt
+  roleId Int @db.UnsignedInt
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+model UserLogins {
+  id        Int    @id @default(autoincrement()) @db.UnsignedInt
+  userId    Int    @db.UnsignedInt
+  ip        String
+  userAgent String @db.Text
+  dateTime  String @db.VarChar(20)
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Bakhsh {
+  id      Int     @id @default(autoincrement()) @db.UnsignedInt
+  name    String  @unique
+  tedad   Int     @default(0) @db.UnsignedInt
+  contact String? @db.Text
+  start   String
+
+  TaradodBakhsh TaradodBakhsh[]
+  Avamel        Avamel[]
+  UserHasBakhsh UserHasBakhsh[]
+  BakhshCodes   BakhshCodes[]
+
+  @@index([name])
+}
+
+model BakhshCodes {
+  bakhshId Int    @db.UnsignedInt
+  code     String @unique
+
+  Bakhsh Bakhsh @relation(fields: [bakhshId], references: [id], onDelete: Cascade)
+
+  @@unique([bakhshId, code])
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement()) @db.UnsignedInt
+  barcode   Int        @unique @db.UnsignedInt
+  serial    Int        @db.UnsignedInt
+  date      String     @db.VarChar(10)
+  status    CartStatus @default(MORAJENASHODE)
+  banReason String?
+
+  @@index([barcode, serial, date])
+}
+
+enum CartStatus {
+  MORAJENASHODE @map(name: "مراجعه نشده")
+  DAKHEL        @map(name: "داخل")
+  KHAREJ        @map(name: "خارج")
+}
+
+model Avamel {
+  id           Int     @id @default(autoincrement()) @db.UnsignedInt
+  code         Int     @unique @db.UnsignedInt
+  name         String
+  ban          Boolean @default(false)
+  image        String?
+  mojaz        Boolean @default(false)
+  imagechecked Boolean @default(false)
+  bakhshId     Int     @db.UnsignedInt
+
+  Bakhsh Bakhsh @relation(fields: [bakhshId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+}
+
+model Taradod {
+  id              Int         @id @default(autoincrement()) @db.UnsignedInt
+  taradodableId   Int         @db.UnsignedInt
+  taradodableType String
+  type            TaradodType
+  userName        String?
+  isHuman         Boolean     @default(true)
+  gateId          Int         @db.UnsignedInt
+  date            String      @db.VarChar(10)
+
+  Gate Gate @relation(fields: [gateId], references: [id], onDelete: Cascade)
+
+  @@index([taradodableId, taradodableType])
+}
+
+enum TaradodType {
+  VOROOD  @map(name: "ورود")
+  KHOROOJ @map(name: "خروج")
+}
+
+model TaradodTotal {
+  id           Int     @id @default(autoincrement()) @db.UnsignedInt
+  userName     String?
+  date         String  @db.VarChar(10)
+  humanIn      Int     @default(0) @db.UnsignedInt
+  humanOut     Int     @default(0) @db.UnsignedInt
+  cartIn       Int     @default(0) @db.UnsignedInt
+  cartOut      Int     @default(0) @db.UnsignedInt
+  dastiIn      Int     @default(0) @db.UnsignedInt
+  dastiOut     Int     @default(0) @db.UnsignedInt
+  error        Int     @default(0) @db.UnsignedInt
+  gateId       Int     @db.UnsignedInt
+  lastActivity String  @db.VarChar(20)
+
+  Gate Gate @relation(fields: [gateId], references: [id], onDelete: Cascade)
+
+  @@unique([gateId, date])
+}
+
+model Error {
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  input         String?
+  errorableId   Int?      @db.UnsignedInt
+  errorableType String?
+  userName      String
+  type          ErrorType
+  gateId        Int       @db.UnsignedInt
+  checkedBy     Int?      @db.UnsignedInt
+  dateTime      String    @db.VarChar(20)
+
+  Gate        Gate  @relation(fields: [gateId], references: [id], onDelete: Cascade)
+  CheckedUser User? @relation(fields: [checkedBy], references: [id], onDelete: Cascade)
+
+  @@index([errorableId, errorableType, gateId])
+}
+
+enum ErrorType {
+  BAN             @map(name: "مسدود")
+  TARIKH_NASAHIH  @map(name: "تاریخ ناصحیح")
+  KHOROOJ_MOJADAD @map(name: "خروج مجدد")
+  VOROOD_MOJADAD  @map(name: "ورود مجدد")
+  ADAMVOJOOD      @map(name: "عدم وجود")
+}
+
+model TaradodBakhsh {
+  id       Int    @id @default(autoincrement()) @db.UnsignedInt
+  bakhshId Int    @db.UnsignedInt
+  date     String @db.VarChar(10)
+  in       Int    @default(0) @db.UnsignedInt
+  out      Int    @default(0) @db.UnsignedInt
+
+  Bakhsh Bakhsh @relation(fields: [bakhshId], references: [id], onDelete: Cascade)
+
+  @@unique([bakhshId, date])
+  @@index([bakhshId, date])
+}
+
+model TaradodNote {
+  id        Int    @id @default(autoincrement()) @db.UnsignedInt
+  gateId    Int    @db.UnsignedInt
+  desc      String @db.Text
+  dateTime  String @db.VarChar(20)
+  checkedBy Int?   @db.UnsignedInt
+
+  Gate        Gate  @relation(fields: [gateId], references: [id], onDelete: Cascade)
+  CheckedUser User? @relation(fields: [checkedBy], references: [id], onDelete: Cascade)
+
+  @@index([gateId])
+}
+
+model Settings {
+  key   SettingsKey @unique
+  value String      @db.Text
+
+  @@index([key])
+}
+
+enum SettingsKey {
+  SMS_START_TIME
+  SMS_END_TIME
+  SMS_FAST_TIME
+  SMS_INTERVAL_NORMAL
+  SMS_INTERVAL_FAST
+  SMS_RECIPIENT_NORMAL
+  SMS_RECIPIENT_FAST
+  CONTROLTARADOD_START
+  CONTROLTARADOD_END
+}
